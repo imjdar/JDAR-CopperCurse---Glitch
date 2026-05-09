@@ -1,0 +1,27 @@
+# JDAR-CopperCurse Configuration
+enabled: true
+
+# Mining mechanics
+mining:
+  diamond-limit: 5
+  cancel-valuable-drops: true # Coal, Iron, Gold, Emerald -> Copper
+
+# Crafting mechanics
+crafting:
+  block-vanilla-gear: true # Iron, Gold, Diamond, Netherite
+  custom-copper-recipes: true
+
+# Passives
+passives:
+  oxidizing-strike:
+    chance: 0.15 # 15%
+    slowness-duration: 60 # ticks
+    fatigue-duration: 60 # ticks
+
+# Shield
+shield:
+  repel-force: 0.5
+
+# Loot
+loot:
+  override-global: true

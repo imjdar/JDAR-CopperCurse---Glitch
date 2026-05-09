@@ -1,0 +1,14 @@
+name: JDAR-CopperCurse
+version: '${version}'
+main: com.jdar.coppercurse.CopperCurse
+api-version: '1.21'
+author: JDAR
+description: A curse that turns everything into copper.
+commands:
+  coppercurse:
+    description: Main command for CopperCurse.
+    aliases: [cc]
+permissions:
+  coppercurse.admin:
+    description: Allows administrative actions.
+    default: op
