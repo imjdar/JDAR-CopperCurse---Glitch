@@ -14,6 +14,7 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Handles ore mining restrictions and diamond limits.
@@ -21,15 +22,16 @@ import java.util.Set;
 public class OreListener implements Listener {
 
     private final CopperCurse plugin;
-    private final Set<Material> restrictedOres = Set.of(
-            Material.IRON_ORE, Material.DEEPSLATE_IRON_ORE,
-            Material.GOLD_ORE, Material.DEEPSLATE_GOLD_ORE,
-            Material.COAL_ORE, Material.DEEPSLATE_COAL_ORE,
-            Material.EMERALD_ORE, Material.DEEPSLATE_EMERALD_ORE
-    );
+
+    private final Function<Material, ItemStack> itemStackFactory;
 
     public OreListener(CopperCurse plugin) {
+        this(plugin, ItemStack::new);
+    }
+
+    public OreListener(CopperCurse plugin, Function<Material, ItemStack> factory) {
         this.plugin = plugin;
+        this.itemStackFactory = factory;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -41,6 +43,12 @@ public class OreListener implements Listener {
         Player player = event.getPlayer();
 
         // Restricted Ores -> Copper
+        Set<Material> restrictedOres = Set.of(
+                Material.IRON_ORE, Material.DEEPSLATE_IRON_ORE,
+                Material.GOLD_ORE, Material.DEEPSLATE_GOLD_ORE,
+                Material.COAL_ORE, Material.DEEPSLATE_COAL_ORE,
+                Material.EMERALD_ORE, Material.DEEPSLATE_EMERALD_ORE
+        );
         if (restrictedOres.contains(type)) {
             handleCopperReplacement(event, type);
             return;
@@ -62,7 +70,7 @@ public class OreListener implements Listener {
         Material drop = (type == Material.GOLD_ORE || type == Material.DEEPSLATE_GOLD_ORE) 
                 ? Material.RAW_COPPER : Material.COPPER_INGOT;
         
-        event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation(), new ItemStack(drop));
+        event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation(), itemStackFactory.apply(drop));
     }
 
     private void handleIronLimit(BlockBreakEvent event, Player player) {
@@ -71,14 +79,14 @@ public class OreListener implements Listener {
 
         if (ironCount >= 6) {
             event.setDropItems(false);
-            event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation(), new ItemStack(Material.RAW_COPPER));
+            event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation(), itemStackFactory.apply(Material.RAW_COPPER));
             player.sendMessage("§cLa maldición del cobre ha transformado el hierro... Ya tienes suficiente.");
         } else {
             // Allow iron drop and increment count
             pdc.set(Constants.IRON_OBTAINED_KEY, PersistentDataType.INTEGER, ironCount + 1);
             // Default iron drop is RAW_IRON
             event.setDropItems(false);
-            event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation(), new ItemStack(Material.RAW_IRON));
+            event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation(), itemStackFactory.apply(Material.RAW_IRON));
         }
     }
 
@@ -89,7 +97,7 @@ public class OreListener implements Listener {
         if (minedCount >= plugin.getConfig().getInt("mining.diamond-limit", 5)) {
             // Evaporate and give copper
             event.setDropItems(false);
-            event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation(), new ItemStack(Material.RAW_COPPER));
+            event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation(), itemStackFactory.apply(Material.RAW_COPPER));
             player.sendMessage("§cLa maldición del cobre ha evaporado el diamante...");
         } else {
             // Allow mining and increment count
