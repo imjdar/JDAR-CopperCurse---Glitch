@@ -61,7 +61,7 @@ public class CombatListener implements Listener {
     }
 
     private void handleGlitchShield(Player defender, org.bukkit.entity.Entity attacker) {
-        ItemStack item = defender.getItemInUse();
+        ItemStack item = defender.getActiveItem();
         if (item == null || item.getType().isAir()) return;
 
         String customId = item.getItemMeta().getPersistentDataContainer().get(Constants.CUSTOM_ITEM_KEY, PersistentDataType.STRING);

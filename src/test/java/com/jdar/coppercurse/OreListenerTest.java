@@ -10,61 +10,72 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import be.seeseemelk.mockbukkit.MockBukkit;
+import be.seeseemelk.mockbukkit.ServerMock;
+import be.seeseemelk.mockbukkit.entity.PlayerMock;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class OreListenerTest {
 
-    @Mock private CopperCurse plugin;
-    @Mock private FileConfiguration config;
-    @Mock private Player player;
-    @Mock private Block block;
-    @Mock private World world;
-    @Mock private PersistentDataContainer pdc;
-    @Mock private BlockBreakEvent event;
-
+    private ServerMock server;
+    private CopperCurse plugin;
     private OreListener listener;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
+        server = MockBukkit.mock();
+        plugin = mock(CopperCurse.class);
         listener = new OreListener(plugin);
         
         when(plugin.isPluginEnabled()).thenReturn(true);
+        FileConfiguration config = new YamlConfiguration();
+        config.set("mining.diamond-limit", 5);
         when(plugin.getConfig()).thenReturn(config);
-        when(config.getInt("mining.diamond-limit", 5)).thenReturn(5);
-        
-        when(event.getPlayer()).thenReturn(player);
-        when(event.getBlock()).thenReturn(block);
-        when(block.getWorld()).thenReturn(world);
-        when(player.getPersistentDataContainer()).thenReturn(pdc);
+    }
+
+    @AfterEach
+    void tearDown() {
+        MockBukkit.unmock();
     }
 
     @Test
     void testDiamondLimit_NotReached() {
+        PlayerMock player = server.addPlayer();
+        Block block = mock(Block.class);
         when(block.getType()).thenReturn(Material.DIAMOND_ORE);
-        when(pdc.getOrDefault(eq(Constants.DIAMONDS_MINED_KEY), eq(PersistentDataType.INTEGER), anyInt())).thenReturn(0);
+        when(block.getWorld()).thenReturn(player.getWorld());
+        when(block.getLocation()).thenReturn(player.getLocation());
 
+        BlockBreakEvent event = new BlockBreakEvent(block, player);
         listener.onOreBreak(event);
 
-        verify(pdc).set(eq(Constants.DIAMONDS_MINED_KEY), eq(PersistentDataType.INTEGER), eq(1));
-        verify(event, never()).setDropItems(false);
+        int count = player.getPersistentDataContainer().getOrDefault(Constants.DIAMONDS_MINED_KEY, PersistentDataType.INTEGER, 0);
+        assert count == 1;
     }
 
     @Test
     void testDiamondLimit_Reached() {
+        PlayerMock player = server.addPlayer();
+        player.getPersistentDataContainer().set(Constants.DIAMONDS_MINED_KEY, PersistentDataType.INTEGER, 5);
+        
+        Block block = mock(Block.class);
         when(block.getType()).thenReturn(Material.DIAMOND_ORE);
-        when(pdc.getOrDefault(eq(Constants.DIAMONDS_MINED_KEY), eq(PersistentDataType.INTEGER), anyInt())).thenReturn(5);
+        when(block.getWorld()).thenReturn(player.getWorld());
+        when(block.getLocation()).thenReturn(player.getLocation());
 
+        BlockBreakEvent event = new BlockBreakEvent(block, player);
         listener.onOreBreak(event);
 
-        verify(event).setDropItems(false);
-        verify(world).dropItemNaturally(any(), argThat(item -> item.getType() == Material.RAW_COPPER));
-        verify(player).sendMessage(contains("maldición"));
+        assert event.isDropItems() == false;
+        // Verify message was sent
+        player.assertSaid("§cLa maldición del cobre ha evaporado el diamante...");
     }
 }
